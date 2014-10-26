@@ -60,5 +60,7 @@
 // Private NSWindow method, needed to avoid ghosting when using transparency.
 - (BOOL)_setContentHasShadow:(BOOL)contentHasShadow;
 
+- (NSRect)constrainFrameRect:(NSRect)frameRect toScreen:(NSScreen *)screen;
+
 @end
 
