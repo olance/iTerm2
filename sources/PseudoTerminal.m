@@ -2327,6 +2327,14 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
             [self hideMenuBar];
         }
     }
+    
+    // If the window is WINDOW_TYPE_TOP move it up as far as we can.
+    if (windowType_ == WINDOW_TYPE_TOP) {
+        CGFloat menuBarHeight = [[[NSApplication sharedApplication] mainMenu] menuBarHeight];
+        NSRect frame = self.window.frame;
+        frame.origin.y = self.screen.visibleFrame.origin.y + self.screen.visibleFrame.size.height - frame.size.height + menuBarHeight;
+        [self.window setFrame:frame display:YES];
+    }
 
     // Note: there was a bug in the old iterm that setting fonts didn't work
     // properly if the font panel was left open in focus-follows-mouse mode.
@@ -5261,6 +5269,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
 #if ENABLE_SHORTCUT_ACCESSORY
     }
 #endif
+
     // Set the frame for X-of-screen windows. The size doesn't change
     // for _PARTIAL window types.
     DLog(@"fitWindowToTabSize using screen number %@ with frame %@", @([[NSScreen screens] indexOfObject:self.screen]),
@@ -5273,7 +5282,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
             break;
 
         case WINDOW_TYPE_TOP:
-            frame.origin.y = self.screen.visibleFrame.origin.y + self.screen.visibleFrame.size.height - frame.size.height;
+            frame.origin.y = self.screen.visibleFrame.origin.y + self.screen.visibleFrame.size.height - frame.size.height + menuBarHeight;
             frame.size.width = [[self window] frame].size.width;
             frame.origin.x = [[self window] frame].origin.x;
             break;
