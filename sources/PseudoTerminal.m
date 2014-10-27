@@ -525,6 +525,9 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
 
     DLog(@"initWithContentRect:%@ styleMask:%d", [NSValue valueWithRect:initialFrame], (int)styleMask);
     PTYWindow *myWindow;
+    if (isHotkey) {
+        styleMask |= NSNonactivatingPanelMask | NSUtilityWindowMask;
+    }
     myWindow = [[PTYWindow alloc] initWithContentRect:initialFrame
                                             styleMask:styleMask
                                               backing:NSBackingStoreBuffered
@@ -630,14 +633,11 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
 
     if (isHotkey) {
         // This allows the hotkey window to be in the same space as a Lion fullscreen iTerm2 window.
-        [[self window] setCollectionBehavior:[[self window] collectionBehavior] | NSWindowCollectionBehaviorFullScreenAuxiliary];
+        self.window.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary | NSWindowCollectionBehaviorIgnoresCycle;
+        self.window.level = NSFloatingWindowLevel;
     } else {
         // This allows the window to enter Lion fullscreen.
         [[self window] setCollectionBehavior:[[self window] collectionBehavior] | NSWindowCollectionBehaviorFullScreenPrimary];
-    }
-    if (isHotkey) {
-        [[self window] setCollectionBehavior:[[self window] collectionBehavior] | NSWindowCollectionBehaviorIgnoresCycle];
-        [[self window] setCollectionBehavior:[[self window] collectionBehavior] & ~NSWindowCollectionBehaviorParticipatesInCycle];
     }
 
     wellFormed_ = YES;
@@ -1810,7 +1810,8 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
         term = [[[PseudoTerminal alloc] initWithSmartLayout:NO
                                                  windowType:windowType
                                             savedWindowType:WINDOW_TYPE_NORMAL
-                                                     screen:-1] autorelease];
+                                                     screen:-1
+                                                   isHotkey: isHotkeyWindow] autorelease];
 
         NSRect rect;
         rect.origin.x = [[arrangement objectForKey:TERMINAL_ARRANGEMENT_X_ORIGIN] doubleValue];

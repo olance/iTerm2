@@ -34,7 +34,7 @@
 - (void)toggleTraditionalFullScreenMode;
 @end
 
-@interface PTYWindow : NSWindow
+@interface PTYWindow : NSPanel
 
 @property(nonatomic, readonly) int screenNumber;
 @property(nonatomic, readonly, getter=isTogglingLionFullScreen) BOOL togglingLionFullScreen;
