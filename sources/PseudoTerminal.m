@@ -76,12 +76,16 @@
 
 @class QLPreviewPanel;
 
+#ifdef PSEUDOTERMINAL_VERBOSE_LOGGING
+#define PtyLog NSLog
+#else
+#define PtyLog DLog
+#endif
+
 NSString *const kCurrentSessionDidChange = @"kCurrentSessionDidChange";
 NSString *const kPseudoTerminalStateRestorationWindowArrangementKey = @"ptyarrangement";
 
 static NSString *const kWindowNameFormat = @"iTerm Window %d";
-
-#define PtyLog DLog
 
 // Constants for saved window arrangement key names.
 static NSString* TERMINAL_ARRANGEMENT_OLD_X_ORIGIN = @"Old X Origin";
@@ -382,7 +386,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
                             savedWindowType:(iTermWindowType)savedWindowType
                                      screen:(int)screenNumber
                                    isHotkey:(BOOL)isHotkey {
-    DLog(@"-[%p finishInitializationWithSmartLayout:%@ windowType:%d screen:%d isHotkey:%@ ",
+    PtyLog(@"-[%p finishInitializationWithSmartLayout:%@ windowType:%d screen:%d isHotkey:%@ ",
          self,
          smartLayout ? @"YES" : @"NO",
          windowType,
@@ -396,10 +400,10 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
         screenNumber == -1) {
         NSUInteger n = [[NSScreen screens] indexOfObjectIdenticalTo:[[self window] screen]];
         if (n == NSNotFound) {
-            DLog(@"Convert default screen to screen number: No screen matches the window's screen so using main screen");
+            PtyLog(@"Convert default screen to screen number: No screen matches the window's screen so using main screen");
             screenNumber = 0;
         } else {
-            DLog(@"Convert default screen to screen number: System chose screen %lu", (unsigned long)n);
+            PtyLog(@"Convert default screen to screen number: System chose screen %lu", (unsigned long)n);
             screenNumber = n;
         }
     } else if (screenNumber == -2) {
@@ -436,12 +440,12 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
     NSScreen* screen = nil;
     if (screenNumber == -1 || screenNumber >= [[NSScreen screens] count])  {
         screen = [[self window] screen];
-        DLog(@"Screen number %d is out of range [0,%d] so using 0",
+        PtyLog(@"Screen number %d is out of range [0,%d] so using 0",
              screenNumber, (int)[[NSScreen screens] count]);
         screenNumber_ = 0;
         haveScreenPreference_ = NO;
     } else if (screenNumber >= 0) {
-        DLog(@"Selecting screen number %d", screenNumber);
+        PtyLog(@"Selecting screen number %d", screenNumber);
         screen = [[NSScreen screens] objectAtIndex:screenNumber];
         screenNumber_ = screenNumber;
         haveScreenPreference_ = YES;
@@ -481,6 +485,8 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
             // be overridden by smart window placement or a saved window location.
             initialFrame = [[self window] frame];
             if (haveScreenPreference_) {
+                PtyLog(@"Moving window to screen %d", screenNumber_);
+
                 // Move the frame to the desired screen
                 NSScreen* baseScreen = [[self window] screen];
                 NSPoint basePoint = [baseScreen visibleFrame].origin;
@@ -488,12 +494,12 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
                 double yoffset = initialFrame.origin.y - basePoint.y;
                 NSPoint destPoint = [screen visibleFrame].origin;
 
-                DLog(@"Assigned screen has origin %@, destination screen has origin %@", NSStringFromPoint(baseScreen.visibleFrame.origin),
+                PtyLog(@"Assigned screen has origin %@, destination screen has origin %@", NSStringFromPoint(baseScreen.visibleFrame.origin),
                      NSStringFromPoint(destPoint));
                 destPoint.x += xoffset;
                 destPoint.y += yoffset;
                 initialFrame.origin = destPoint;
-                DLog(@"New initial frame is %@", NSStringFromRect(initialFrame));
+                PtyLog(@"New initial frame is %@", NSStringFromRect(initialFrame));
                 // Make sure the top-right corner of the window is on the screen too
                 NSRect destScreenFrame = [screen visibleFrame];
                 double xover = destPoint.x + initialFrame.size.width - (destScreenFrame.origin.x + destScreenFrame.size.width);
@@ -504,7 +510,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
                 if (yover > 0) {
                     destPoint.y -= yover;
                 }
-                DLog(@"after adjusting top right, initial origin is %@", NSStringFromPoint(destPoint));
+                PtyLog(@"after adjusting top right, initial origin is %@", NSStringFromPoint(destPoint));
                 [[self window] setFrameOrigin:destPoint];
             }
             break;
@@ -523,7 +529,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
     }
     savedWindowType_ = savedWindowType;
 
-    DLog(@"initWithContentRect:%@ styleMask:%d", [NSValue valueWithRect:initialFrame], (int)styleMask);
+    PtyLog(@"initWithContentRect:%@ styleMask:%d", [NSValue valueWithRect:initialFrame], (int)styleMask);
     PTYWindow *myWindow;
     if (isHotkey) {
         styleMask |= NSNonactivatingPanelMask | NSUtilityWindowMask;
@@ -542,9 +548,19 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
         [myWindow setFrame:initialFrame display:NO];
     }
 
-    [myWindow setHasShadow:(windowType == WINDOW_TYPE_NORMAL)];
-
-    DLog(@"Create window %@", myWindow);
+    PtyLog(@"Create window %@", myWindow);
+    if (windowType == WINDOW_TYPE_TOP ||
+        windowType == WINDOW_TYPE_BOTTOM ||
+        windowType == WINDOW_TYPE_LEFT ||
+        windowType == WINDOW_TYPE_RIGHT ||
+        windowType == WINDOW_TYPE_TOP_PARTIAL ||
+        windowType == WINDOW_TYPE_BOTTOM_PARTIAL ||
+        windowType == WINDOW_TYPE_LEFT_PARTIAL ||
+        windowType == WINDOW_TYPE_RIGHT_PARTIAL ||
+        windowType == WINDOW_TYPE_NO_TITLE_BAR) {
+        [myWindow setHasShadow:YES];
+    }
+    [self updateContentShadow];
 
     PtyLog(@"finishInitializationWithSmartLayout - new window is at %p", myWindow);
     [self setWindow:myWindow];
@@ -1867,7 +1883,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
     TmuxController *controller = [[self currentSession] tmuxController];
     if (!controller) {
         controller = [[[iTermController sharedInstance] anyTmuxSession] tmuxController];
-        DLog(@"No controller for current session %@, picking one at random: %@",
+        PtyLog(@"No controller for current session %@, picking one at random: %@",
              [self currentSession], controller);
     }
     return controller;
@@ -2645,7 +2661,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
 // Returns the hotkey window that should be hidden or nil if the hotkey window
 // shouldn't be hidden right now.
 - (PseudoTerminal *)hotkeyWindowToHide {
-    DLog(@"Checking if hotkey window should be hidden.");
+    PtyLog(@"Checking if hotkey window should be hidden.");
     BOOL haveMain = NO;
     BOOL otherTerminalIsKey = NO;
     for (NSWindow *window in [[NSApplication sharedApplication] windows]) {
@@ -2656,9 +2672,9 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
     PseudoTerminal *hotkeyTerminal = nil;
     for (PseudoTerminal *term in [[iTermController sharedInstance] terminals]) {
         PTYWindow *window = [term ptyWindow];
-        DLog(@"Window %@ key=%d isHotKeyWindow=%d", window, [window isKeyWindow], (int)[term isHotKeyWindow]);
+        PtyLog(@"Window %@ key=%d", window, [window isKeyWindow]);
         if ([window isKeyWindow] && ![term isHotKeyWindow]) {
-            DLog(@"Key window is %@", window);
+            PtyLog(@"Key window is %@", window);
             otherTerminalIsKey = YES;
         }
         if ([term isHotKeyWindow]) {
@@ -2666,12 +2682,12 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
         }
     }
 
-    DLog(@"%@ haveMain=%d otherTerminalIsKey=%d", self.window, haveMain, otherTerminalIsKey);
+    PtyLog(@"%@ haveMain=%d otherTerminalIsKey=%d", self.window, haveMain, otherTerminalIsKey);
     if (hotkeyTerminal && (!haveMain || otherTerminalIsKey)) {
         DLog(@"Return %@", hotkeyTerminal);
         return hotkeyTerminal;
     } else {
-        DLog(@"No need to hide hotkey window");
+        PtyLog(@"No need to hide hotkey window");
         return nil;
     }
 }
@@ -2943,7 +2959,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
 
 - (void)windowDidMove:(NSNotification *)notification
 {
-    DLog(@"%@: Window %@ moved. Called from %@", self, self.window, [NSThread callStackSymbols]);
+    PtyLog(@"%@: Window %@ moved. Called from %@", self, self.window, [NSThread callStackSymbols]);
     [self saveTmuxWindowOrigins];
 }
 
@@ -3076,7 +3092,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
 
 - (IBAction)toggleFullScreenMode:(id)sender
 {
-    DLog(@"toggleFullScreenMode:. window type is %d", windowType_);
+    PtyLog(@"toggleFullScreenMode:. window type is %d", windowType_);
     if ([self lionFullScreen] ||
         (windowType_ != WINDOW_TYPE_TRADITIONAL_FULL_SCREEN &&
          !_isHotKeyWindow &&  // NSWindowCollectionBehaviorFullScreenAuxiliary window can't enter Lion fullscreen mode properly
@@ -3085,11 +3101,11 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
         [[self ptyWindow] performSelector:@selector(toggleFullScreen:) withObject:self];
         if (lionFullScreen_) {
             // will exit fullscreen
-            DLog(@"Set window type to lion fs");
+            PtyLog(@"Set window type to lion fs");
             windowType_ = WINDOW_TYPE_LION_FULL_SCREEN;
         } else {
             // Will enter fullscreen
-            DLog(@"Set saved window type to %d before setting window type to normal in preparation for going fullscreen", savedWindowType_);
+            PtyLog(@"Set saved window type to %d before setting window type to normal in preparation for going fullscreen", savedWindowType_);
             savedWindowType_ = windowType_;
             windowType_ = WINDOW_TYPE_NORMAL;
         }
@@ -3415,15 +3431,17 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
     }
 }
 
-- (void)windowWillEnterFullScreen:(NSNotification *)notification {
-    DLog(@"Window will enter lion fullscreen");
+- (void)windowWillEnterFullScreen:(NSNotification *)notification
+{
+    PtyLog(@"Window will enter lion fullscreen");
+    [self repositionWidgets];
     togglingLionFullScreen_ = YES;
     [self repositionWidgets];
 }
 
 - (void)windowDidEnterFullScreen:(NSNotification *)notification
 {
-    DLog(@"Window did enter lion fullscreen");
+    PtyLog(@"Window did enter lion fullscreen");
 
     zooming_ = NO;
     togglingLionFullScreen_ = NO;
@@ -3449,7 +3467,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
 
 - (void)windowWillExitFullScreen:(NSNotification *)notification
 {
-    DLog(@"Window will exit lion fullscreen");
+    PtyLog(@"Window will exit lion fullscreen");
     exitingLionFullscreen_ = YES;
     [_contentView.tabBarControl updateFlashing];
     [self fitTabsToWindow];
@@ -3459,7 +3477,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
 
 - (void)windowDidExitFullScreen:(NSNotification *)notification
 {
-    DLog(@"Window did exit lion fullscreen");
+    PtyLog(@"Window did exit lion fullscreen");
     exitingLionFullscreen_ = NO;
     zooming_ = NO;
     lionFullScreen_ = NO;
@@ -3471,7 +3489,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
     [self invalidateRestorableState];
     [_contentView updateToolbelt];
 
-    DLog(@"Window did exit fullscreen. Set window type to %d", savedWindowType_);
+    PtyLog(@"Window did exit fullscreen. Set window type to %d", savedWindowType_);
     windowType_ = savedWindowType_;
     for (PTYTab *aTab in [self tabs]) {
         [aTab notifyWindowChanged];
@@ -3503,7 +3521,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
     float charHeight = [self maxCharHeight:nil];
     float charWidth = [self maxCharWidth:nil];
     if (charHeight < 1 || charWidth < 1) {
-        DLog(@"During windowWillUseStandardFrame:defaultFrame:, charWidth or charHeight are less "
+        PtyLog(@"During windowWillUseStandardFrame:defaultFrame:, charWidth or charHeight are less "
              @"than 1 so using default frame. This is expected on 10.10 while restoring a "
              @"fullscreen window.");
         return defaultFrame;
@@ -4725,7 +4743,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
 - (void)hideAutoCommandHistoryForSession:(PTYSession *)session {
     if ([session.guid isEqualToString:self.autoCommandHistorySessionGuid]) {
         [self hideAutoCommandHistory];
-        DLog(@"Cancel delayed perform of show ACH window");
+        PtyLog(@"Cancel delayed perform of show ACH window");
         [NSObject cancelPreviousPerformRequestsWithTarget:self
                                                  selector:@selector(reallyShowAutoCommandHistoryForSession:)
                                                    object:session];
@@ -5325,6 +5343,9 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
     }
 
     BOOL didResize = NSEqualRects([[self window] frame], frame);
+    PtyLog(@"Before frame:byConstrainingToScreen: %@", NSStringFromRect(frame));
+    frame = [self frame:frame byConstrainingToScreen:[[self window] screen]];
+    PtyLog(@"After frame:byConstrainingToScreen: %@", NSStringFromRect(frame));
     [[self window] setFrame:frame display:YES];
 
     if (bugFixView) {
