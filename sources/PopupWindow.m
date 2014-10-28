@@ -23,8 +23,9 @@
                               backing:bufferingType
                                 defer:flag];
     if (self) {
-        [self setCollectionBehavior:NSWindowCollectionBehaviorMoveToActiveSpace];
         self.opaque = NO;
+        self.collectionBehavior = NSWindowCollectionBehaviorMoveToActiveSpace;
+        self.level = NSFloatingWindowLevel;
     }
     return self;
 }
