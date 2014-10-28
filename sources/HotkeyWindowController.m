@@ -85,6 +85,9 @@ static void RollInHotkeyTerm(PseudoTerminal* term)
     }];
     [[[term window] animator] setAlphaValue:1];
     [NSAnimationContext endGrouping];
+    [[HotkeyWindowController sharedInstance] performSelector:@selector(rollInFinished:)
+                                                  withObject:term
+                                                  afterDelay:[[NSAnimationContext currentContext] duration]];
 }
 
 - (instancetype)init {
@@ -126,11 +129,8 @@ static void RollInHotkeyTerm(PseudoTerminal* term)
     }
 }
 
-- (void)rollInFinished
-{
+- (void)rollInFinished:(PseudoTerminal*)term {
     rollingIn_ = NO;
-    PseudoTerminal* term = GetHotkeyWindow();
-    [[term window] makeKeyAndOrderFront:nil];
     [[term window] makeFirstResponder:[[term currentSession] textview]];
 }
 
