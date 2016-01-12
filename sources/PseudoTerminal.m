@@ -560,7 +560,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
         windowType == WINDOW_TYPE_NO_TITLE_BAR) {
         [myWindow setHasShadow:YES];
     }
-    [self updateContentShadow];
+    //[self updateContentShadow];
 
     PtyLog(@"finishInitializationWithSmartLayout - new window is at %p", myWindow);
     [self setWindow:myWindow];
@@ -5213,6 +5213,30 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
     }
 }
 
+// Bump a frame so that it's within the screen's visible frame, if possible.
+- (NSRect)frame:(NSRect)frame byConstrainingToScreen:(NSScreen *)screen {
+    NSRect screenRect = screen.visibleFrameIgnoringHiddenDock;
+    if (frame.size.width > screenRect.size.width ||
+        frame.size.height > screenRect.size.height) {
+        return frame; // Sorry, can't be done.
+    }
+    
+    if (NSContainsRect(screenRect, frame)) {
+        // Nothing to do.
+        return frame;
+    }
+    
+    CGFloat xOver = NSMaxX(frame) - NSMaxX(screenRect);
+    CGFloat yOver = NSMaxY(frame) - NSMaxY(screenRect);
+    CGFloat xUnder = NSMinX(screenRect) - NSMinX(frame);
+    CGFloat yUnder = NSMinY(screenRect) - NSMinY(frame);
+    
+    frame.origin.x += MAX(0, xUnder) - MAX(0, xOver);
+    frame.origin.y += MAX(0, yUnder) - MAX(0, yOver);
+    
+    return frame;
+}
+
 - (BOOL)fitWindowToTabSize:(NSSize)tabSize
 {
     PtyLog(@"fitWindowToTabSize %@", [NSValue valueWithSize:tabSize]);
@@ -5300,7 +5324,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
             break;
 
         case WINDOW_TYPE_TOP:
-            frame.origin.y = self.screen.visibleFrame.origin.y + self.screen.visibleFrame.size.height - frame.size.height + menuBarHeight;
+            frame.origin.y = self.screen.visibleFrame.origin.y + self.screen.visibleFrame.size.height - frame.size.height + NSApp.mainMenu.menuBarHeight;
             frame.size.width = [[self window] frame].size.width;
             frame.origin.x = [[self window] frame].origin.x;
             break;

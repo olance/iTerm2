@@ -55,6 +55,7 @@
 - (BOOL)registerHotkey:(int)keyCode modifiers:(int)modifiers;
 - (void)beginRemappingModifiers;
 - (void)stopEventTap;
+- (void)rollInFinished:(PseudoTerminal*)term;
 
 // Returns the profile to be used for new hotkey windows, or nil if none defined.
 - (Profile *)profile;

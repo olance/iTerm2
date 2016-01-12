@@ -25,6 +25,7 @@
 @interface HotkeyWindowController()
 // For restoring previously active app when exiting hotkey window.
 @property(nonatomic, copy) NSNumber *previouslyActiveAppPID;
+
 @end
 
 @implementation HotkeyWindowController {
@@ -81,7 +82,7 @@ static void RollInHotkeyTerm(PseudoTerminal* term)
     [NSAnimationContext beginGrouping];
     [[NSAnimationContext currentContext] setDuration:[iTermAdvancedSettingsModel hotkeyTermAnimationDuration]];
     [[NSAnimationContext currentContext] setCompletionHandler:^{
-        [[HotkeyWindowController sharedInstance] rollInFinished];
+        [[HotkeyWindowController sharedInstance] rollInFinished:term];
     }];
     [[[term window] animator] setAlphaValue:1];
     [NSAnimationContext endGrouping];
