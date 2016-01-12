@@ -86,6 +86,7 @@ NSString *const kCurrentSessionDidChange = @"kCurrentSessionDidChange";
 NSString *const kPseudoTerminalStateRestorationWindowArrangementKey = @"ptyarrangement";
 
 static NSString *const kWindowNameFormat = @"iTerm Window %d";
+static NSString *const kShowFullscreenTabBarKey = @"ShowFullScreenTabBar";
 
 // Constants for saved window arrangement key names.
 static NSString* TERMINAL_ARRANGEMENT_OLD_X_ORIGIN = @"Old X Origin";
@@ -486,7 +487,6 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
             initialFrame = [[self window] frame];
             if (haveScreenPreference_) {
                 PtyLog(@"Moving window to screen %d", screenNumber_);
-
                 // Move the frame to the desired screen
                 NSScreen* baseScreen = [[self window] screen];
                 NSPoint basePoint = [baseScreen visibleFrame].origin;
@@ -547,7 +547,6 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
         // monitor.
         [myWindow setFrame:initialFrame display:NO];
     }
-
     PtyLog(@"Create window %@", myWindow);
     if (windowType == WINDOW_TYPE_TOP ||
         windowType == WINDOW_TYPE_BOTTOM ||
@@ -5311,7 +5310,7 @@ static NSString* TERMINAL_ARRANGEMENT_HIDING_TOOLBELT_SHOULD_RESIZE_WINDOW = @"H
 #if ENABLE_SHORTCUT_ACCESSORY
     }
 #endif
-
+   
     // Set the frame for X-of-screen windows. The size doesn't change
     // for _PARTIAL window types.
     DLog(@"fitWindowToTabSize using screen number %@ with frame %@", @([[NSScreen screens] indexOfObject:self.screen]),
